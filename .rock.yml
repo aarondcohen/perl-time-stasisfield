@@ -1,0 +1,12 @@
+runtime: perl518
+
+prove: |
+  if [[ -n "${ROCK_ARGS}" ]]; then
+    TEST_AUTHOR=1 exec prove ${PERL_TEST_INC} -r -l -v ${ROCK_ARGS}
+  else
+    TEST_AUTHOR=1 exec prove ${PERL_TEST_INC} -r -l -v t
+  fi
+
+test: exec rock prove ${ROCK_ARGS}
+test_all: exec rock prove t/
+
