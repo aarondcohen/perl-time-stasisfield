@@ -191,19 +191,19 @@ Time::StasisField - use science fiction to control time within your tests
 
 =head1 SYNOPSIS
 
-use Test::More;
-use Time::StasisField (qw(now advance_time set_seconds_per_tick));
+		use Test::More;
+		use Time::StasisField (qw(now advance_time set_seconds_per_tick));
 
-Time::StasisField::engage;
+		Time::StasisField::engage;
 
-cmp_ok(
-  time - CORE::time,
-  '<=',
-  1,
-  "Perl's time() is within 1 second of CORE::time"
-);
+		cmp_ok(
+		  time - CORE::time,
+		  '<=',
+		  1,
+		  "Perl's time() is within 1 second of CORE::time"
+		);
 
-is( now, now, 'now is now' );
+		is( now, now, 'now is now' );
 
 =head1 DESCRIPTION
 
