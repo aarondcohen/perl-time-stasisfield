@@ -1,2 +1,0 @@
-perl-moosex-role-hashable
-=========================
