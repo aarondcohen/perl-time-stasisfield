@@ -11,9 +11,9 @@ use Test::More(tests => 20);
 
 my $seed_time = CORE::time;
 #Time advances steadily when stasis is engaged, so let's rule that out
-Time::StasisField::engage;
+Time::StasisField->engage;
 time for 0 .. 10;
-Time::StasisField::disengage;
+Time::StasisField->disengage;
 
 cmp_ok time - $seed_time, '<=', 1, 'time returns the same value as CORE::time';
 

@@ -7,7 +7,7 @@ use FindBin ();
 use lib "$FindBin::Bin/../lib/";
 
 use Time::StasisField;
-use Test::More (tests => 5);
+use Test::More (tests => 10);
 
 for (
 	['Time::StasisField::alarm', sub { alarm(0) } ],
@@ -17,12 +17,20 @@ for (
 	['Time::StasisField::time', sub { time }],
 ) {
 	my ($function, $test) = @$_;
-	no strict 'refs';
-	no warnings 'redefine';
+	no strict ('refs');
+	no warnings ('redefine');
 	my $is_triggered = 0;
 	my $original = \&$function;
 	local *{$function} = sub { $is_triggered = 1; goto &$original };
 	$test->();
 	is $is_triggered, 1, "$function is properly installed"
+}
+
+for (qw{alarm gmtime localtime sleep time}) {
+	no strict ('refs');
+	is
+		prototype(\*{"CORE::GLOBAL::$_"}),
+		prototype("CORE::$_"),
+		"$_ has the correct prototype";
 }
 
