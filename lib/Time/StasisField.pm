@@ -39,17 +39,9 @@ my $is_engaged = 0;
 my $is_frozen = 0;
 my $seconds_per_tick = 1;
 
-# scenario 1:
-# set alarm
-# engage
-# advance past alarm
-# => alarm should trigger only on advancement
-#
-# scenario 2:
-# engage
-# set alarm
-# disengage
-# alarm should trigger only after N seconds
+sub is_alarm_set { $is_alarm_set }
+sub is_engaged   { $is_engaged }
+sub is_frozen    { $is_frozen }
 
 ############################
 # Helper Functions
@@ -71,6 +63,7 @@ sub _trigger_alarm {
 	  if ! $is_alarm_set
 	  || $class->now < $alarm_time;
 
+	CORE::alarm(0);
 	$is_alarm_set = 0;
 	kill SIGALRM, $$;
 }
@@ -82,9 +75,22 @@ sub _trigger_alarm {
 sub engage {
 	my $class = shift;
 
-	CORE::alarm(0) if $is_alarm_set;
-	$is_engaged = 1;
-	$class->now(CORE::time);
+	if ($is_engaged) {
+		#Update now to real time
+		$current_time = CORE::time;
+		#Trigger the alarm that may have occurred during the transition
+		$class->_trigger_alarm;
+
+	} else {
+		#Turn off the alarm so that we don't accidentally throw while switching state
+		my $old_alarm = $class->alarm(0);
+
+		$is_engaged = 1;
+		$current_time = CORE::time;
+
+		#Turn the alarm back on
+		$class->alarm($old_alarm || 0);
+	}
 
 	return;
 }
@@ -92,10 +98,14 @@ sub engage {
 sub disengage {
 	my $class = shift;
 
-	$class->now(CORE::time);
+	return unless $is_engaged;
+
+	$current_time = CORE::time;
 	$is_engaged = 0;
-	CORE::alarm($alarm_time - CORE::time) if $is_alarm_set;
-	#The alarm may have triggered before it could properly be set
+
+	#Start the system alarm from now
+	$class->alarm($alarm_time - $current_time) if $is_alarm_set;
+	#Trigger the alarm that may have occurred during the transition
 	$class->_trigger_alarm;
 
 	return;
@@ -140,11 +150,11 @@ sub tick {
 sub freeze   { $is_frozen = 1 }
 sub unfreeze { $is_frozen = 0 }
 
-
-
 sub alarm {
 	my $class = shift;
 	my $offset = @_ ? $_[0] : $_;
+
+	return CORE::alarm($offset) unless $is_engaged;
 
 	$class->_validate_number($offset);
 
@@ -152,9 +162,9 @@ sub alarm {
 		! defined $alarm_time ? $alarm_time :
 		$is_alarm_set ? $alarm_time - $class->now : 0;
 	$alarm_time = $offset > -1 ? $class->now + int($offset) : undef;
-	$is_alarm_set = defined $alarm_time && $offset >= 1;
+	$is_alarm_set = $offset >= 1;
 
-	return $is_engaged ? $previous_alarm_time_remaining : CORE::alarm($_[0]);
+	return $previous_alarm_time_remaining;
 }
 
 sub gmtime {

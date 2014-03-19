@@ -7,18 +7,63 @@ use FindBin ();
 use lib "$FindBin::Bin/../lib/";
 
 use Time::StasisField (qw{:all});
-use Test::More(tests => 200);
+use Test::More(tests => 51);
 
 my $class = 'Time::StasisField';
 
 sub test_alarm {
-	#alarms are triggered after n seconds
-	#triggered by:
-	#time
-	#tick
-	#now(@_)
-	#alarm returns time of previous alarm
-	#alarm(0) unsets the alarm
+	do {
+		my $is_triggered = 0;
+		local $SIG{ALRM} = sub { $is_triggered = 1};
+		alarm(3);
+		$class->tick for 1 .. 5;
+		is $is_triggered, 1, 'tick triggers a set alarm';
+	};
+
+	do {
+		my $is_triggered = 0;
+		local $SIG{ALRM} = sub { $is_triggered = 1};
+		alarm(3);
+		time for 1 .. 5;
+		is $is_triggered, 1, 'time triggers a set alarm';
+	};
+
+	do {
+		my $is_triggered = 0;
+		local $SIG{ALRM} = sub { $is_triggered = 1};
+		alarm(3);
+		$class->now($class->now + 3);
+		is $is_triggered, 1, 'setting now to the exact alarm time triggers a set alarm';
+	};
+
+	do {
+		my $is_triggered = 0;
+		local $SIG{ALRM} = sub { $is_triggered = 1};
+		alarm(3);
+		$class->now($class->now + 5);
+		is $is_triggered, 1, 'setting now past the alarm time triggers a set alarm';
+	};
+
+	do {
+		my $is_triggered = 0;
+		local $SIG{ALRM} = sub { $is_triggered = 1};
+		alarm(3);
+		alarm(0);
+		time for 1 .. 5;
+		is $is_triggered, 0, 'setting alarm to zero unsets the alarm';
+	};
+
+	do {
+		my $is_triggered = 0;
+		local $SIG{ALRM} = sub { $is_triggered = 1};
+		alarm(3);
+		time for 1 .. 5;
+		is alarm(0), 0, 'alarm returns zero if the previous alarm triggered';
+	};
+
+	is do { alarm(6000); alarm(0) }, 6000, 'alarm returns the time remaining on the previous alarm';
+	is do { alarm(6000.01); alarm(0) }, 6000, 'alarm does not support subsecond times';
+	is do { alarm(-1); alarm(0) }, undef, 'alarm treats prior negative alarms as undef';
 }
 
 sub test_frozen_time {
@@ -105,9 +150,6 @@ sub test_sleep {
 
 }
 
-sub test_stasis_field_boundaries {
-}
-
 sub test_tick {
 	my $now;
 	is $class->tick, $class->now, 'tick returns now';
@@ -117,12 +159,6 @@ sub test_tick {
 	$now = $class->now;
 	is $class->tick, $now + 5, 'tick obeys seconds_per_tick';
 	$class->seconds_per_tick(1);
-
-	my $is_triggered = 0;
-	local $SIG{ALRM} = sub { $is_triggered = 1};
-	alarm(1);
-	$class->tick;
-	is $is_triggered, 1, 'tick triggers a set alarm';
 }
 
 for my $test (sort grep { $_ =~ /^test_/ } keys %{main::}) {
@@ -135,41 +171,3 @@ for my $test (sort grep { $_ =~ /^test_/ } keys %{main::}) {
 	do { no strict 'refs'; &$test };
 	$class->disengage;
 }
-
-#my $now;
-#
-#
-#is $class->now, $class->now, 'now without arguments is not a mutating call';
-#$now = $class->now;
-#is $class->now($now + 0.5), $now, 'now always returns integer seconds';
-#
-#is time, $class->now, 'time returns now';
-#$now = $class->now;
-#is time, $now + 1, 'time advances now';
-#is time + 1, time, 'time advances in a controllable manner';
-#
-#is $class->advance(3), $class->now, 'advance returns now';
-#$now = $class->now;
-#is $class->advance(3), $now + 3, 'advance moves time by N seconds';
-#is $class->advance(-3), $now, 'advance can move time backwards as well';
-#$class->advance(0.5);
-#is $class->advance(0.5), $now + 1, 'advance works with partial seconds';
-#
-#$class->seconds_per_tick(5);
-#$now = $class->now;
-#is $class->seconds_per_tick, 5, 'seconds_per_tick returns the current tick size';
-#is time, $now + 5, 'seconds_per_tick modifies the amount with which time changes';
-#$class->seconds_per_tick(0.5);
-#time;
-#is time, $now + 6, 'seconds_per_tick works with partial seconds as well';
-#$class->seconds_per_tick(1);
-#
-#$class->freeze;
-#$now = $class->now;
-#time for 0 .. 10;
-#is $class->now, $now, 'time does not change when frozen';
-#is $class->advance(1), $now + 1, 'freezing time does not stop direct calls to advance';
-#$class->unfreeze;
-#is time, $now + 2, 'time continues once unfrozen';
-#
-#

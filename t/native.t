@@ -7,7 +7,7 @@ use FindBin ();
 use lib "$FindBin::Bin/../lib/";
 
 use Time::StasisField;
-use Test::More(tests => 20);
+use Test::More(tests => 21);
 
 my $seed_time = CORE::time;
 #Time advances steadily when stasis is engaged, so let's rule that out
@@ -63,6 +63,7 @@ do {
 	sleep(5);
 	cmp_ok time - ($time_before_alarm + 2), '<=', 1, 'alarm triggers after appropriate number of seconds';
 	is $is_triggered, 1, 'alarm triggers sigalarm';
+	is alarm(0), 0, 'alarm returns zero if the previous alarm triggered';
 };
 
 do {
@@ -71,7 +72,7 @@ do {
 	alarm(1);
 	alarm(0);
 	sleep(2);
-	is $is_triggered, 0, 'alarm is disabled when set to 0';
+	is $is_triggered, 0, 'alarm is disabled when set to zero';
 };
 
 do {
