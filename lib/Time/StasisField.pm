@@ -1,32 +1,78 @@
 package Time::StasisField;
 
+=head1 NAME
+
+Time::StasisField - control the flow of time
+
+=cut
+
 use strict;
 use warnings;
 
 use POSIX (qw{SIGALRM});
 use Scalar::Util (qw{set_prototype});
 
+=head1 VERSION
+
+Version 0.01
+
+=cut
+
 our $VERSION = '0.01';
 
-############################
-# Core Overrides
-############################
+=head1 SYNOPSIS
 
-BEGIN {
-	for my $function (qw{
-		alarm
-		gmtime
-		localtime
-		sleep
-		time
-	}) {
-		no strict 'refs';
-		*{"CORE::GLOBAL::$function"} = set_prototype(
-			sub { unshift @_, 'Time::StasisField'; goto &{"Time::StasisField::$function"} },
-			prototype("CORE::$function")
-		);
-	}
-}
+I<Time::StasisField> provides a simple interface for controlling the flow of
+time.  When the stasis field is disengaged, Perl's core time functions --
+alarm, gmtime, localtime, sleep, and time -- behave normally, assuming that
+time flows with the system clock.  When the stasis field is engaged, time
+is guaranteed to advance at a predictable rate on every call.  For consistency,
+all other time-related functions will use the modified time.
+
+Example usage:
+
+	use Time::StasisField;
+
+	my @foos;
+
+	@foos = map { Foo->new(create_time => time) } (1 .. 20);
+
+	# All times will likely all look the same
+	print $foos[-1]->create_time - $foos[0]->create_time;
+
+	# The program will pause for 10 seconds
+	sleep(10);
+
+	# Time will be 10 seconds later
+	print time;
+
+	#Let's control time
+	Time::StasisField->engage;
+
+	@foos = map { Foo->new(create_time => time) } (1 .. 20);
+
+	# All times will be distinct
+	print $foos[-1]->create_time - $foos[0]->create_time;
+
+	# Time will advance by 10 seconds
+	sleep(10);
+
+	# Fetch the current time without advancing it
+	print Time::StasisField->now;
+
+
+	Time::StasisField->seconds_per_tick(60);
+
+	# Time is now 1 minute later
+	print time;
+
+	# Everything is back to normal
+	Time::StasisField->disengage;
+
+	# Hooray for system time
+	print Time::StasisField->now;
+
+=cut
 
 ############################
 # Private Class Variables
@@ -38,10 +84,6 @@ my $is_alarm_set = 0;
 my $is_engaged = 0;
 my $is_frozen = 0;
 my $seconds_per_tick = 1;
-
-sub is_alarm_set { $is_alarm_set }
-sub is_engaged   { $is_engaged }
-sub is_frozen    { $is_frozen }
 
 ############################
 # Helper Functions
@@ -68,14 +110,22 @@ sub _trigger_alarm {
 	kill SIGALRM, $$;
 }
 
-############################
-# API
-############################
+=head1 STASIS FIELD METHODS
+
+=cut
+
+=head2 engage
+
+Enable the stasis field, seizing control of the system time and setting now to
+the time the field was enabled. If engage is called while the field is already
+enabled, now is updated to the current system time.
+
+=cut
 
 sub engage {
 	my $class = shift;
 
-	if ($is_engaged) {
+	if ($class->is_engaged) {
 		#Update now to real time
 		$current_time = CORE::time;
 		#Trigger the alarm that may have occurred during the transition
@@ -95,10 +145,16 @@ sub engage {
 	return;
 }
 
+=head2 disenage
+
+Disable the stasis field, returning control to the system time.
+
+=cut
+
 sub disengage {
 	my $class = shift;
 
-	return unless $is_engaged;
+	return unless $class->is_engaged;
 
 	$current_time = CORE::time;
 	$is_engaged = 0;
@@ -111,10 +167,54 @@ sub disengage {
 	return;
 }
 
+=head2 is_engaged
+
+Return whether or not the stasis field is enabled.
+
+=cut
+
+sub is_engaged   { $is_engaged }
+
+=head2 freeze
+
+Time should stop advancing now.
+
+=cut
+
+sub freeze   { $is_frozen = 1 }
+
+=head2 unfreeze
+
+Time should continue advancing now.
+
+=cut
+
+sub unfreeze { $is_frozen = 0 }
+
+=head2 is_frozen
+
+Return whether or not time advances now.
+
+=cut
+
+sub is_frozen    { $is_frozen }
+
+=head1 TIME METHODS
+
+=cut
+
+=head2 now
+
+Accessor for the current time.  The supplied time may be any valid number,
+though now will always return an integer.  Falls back to the system time when
+the stasis field is disengaged.
+
+=cut
+
 sub now {
 	my $class = shift;
 
-	return CORE::time unless $is_engaged;
+	return CORE::time unless $class->is_engaged;
 
 	if (@_) {
 		$class->_validate_number($_[0]);
@@ -124,6 +224,13 @@ sub now {
 
 	return int($current_time);
 }
+
+=head2 seconds_per_tick
+
+Accessor for the number of seconds time changes with each tick.  Supports
+negative and subsecond deltas. Only works on time in an engaged stasis field.
+
+=cut
 
 sub seconds_per_tick {
 	my $class = shift;
@@ -136,10 +243,17 @@ sub seconds_per_tick {
 	return $seconds_per_tick;
 }
 
+=head2 tick
+
+Advance time by the value of seconds_per_tick, regardless of the freeze state.
+Returns now.
+
+=cut
+
 sub tick {
 	my $class = shift;
 
-	return CORE::time unless $is_engaged;
+	return CORE::time unless $class->is_engaged;
 
 	$current_time += $class->seconds_per_tick;
 	$class->_trigger_alarm;
@@ -147,16 +261,34 @@ sub tick {
 	return $class->now;
 }
 
-sub freeze   { $is_frozen = 1 }
-sub unfreeze { $is_frozen = 0 }
+############################
+# Core Overrides
+############################
+
+BEGIN {
+	for my $function (qw{
+		alarm
+		gmtime
+		localtime
+		sleep
+		time
+	}) {
+		no strict 'refs';
+		*{"CORE::GLOBAL::$function"} = set_prototype(
+			sub { unshift @_, 'Time::StasisField'; goto &{"Time::StasisField::$function"} },
+			prototype("CORE::$function")
+		);
+	}
+}
+
 
 sub alarm {
 	my $class = shift;
 	my $offset = @_ ? $_[0] : $_;
 
-	return CORE::alarm($offset) unless $is_engaged;
-
 	$class->_validate_number($offset);
+
+	return CORE::alarm($offset) unless $class->is_engaged;
 
 	my $previous_alarm_time_remaining =
 		! defined $alarm_time ? $alarm_time :
@@ -170,6 +302,7 @@ sub alarm {
 sub gmtime {
 	my $class = shift;
 
+	$class->_validate_number($_[0]) if @_;
 	use warnings (FATAL => 'all');
 	CORE::gmtime(@_ ? $_[0] : time);
 }
@@ -177,6 +310,7 @@ sub gmtime {
 sub localtime {
 	my $class = shift;
 
+	$class->_validate_number($_[0]) if @_;
 	use warnings (FATAL => 'all');
 	CORE::localtime(@_ ? $_[0] : time);
 }
@@ -187,43 +321,19 @@ sub sleep {
 	return CORE::sleep unless @_;
 	$class->_validate_number($_[0]);
 	return CORE::sleep if $_[0] <= -1;
-	return $is_engaged ? do { $class->now($class->now + $_[0]); int($_[0]) } : CORE::sleep($_[0]);
+	return $class->is_engaged ? do { $class->now($class->now + $_[0]); int($_[0]) } : CORE::sleep($_[0]);
 }
 
 sub time {
 	my $class = shift;
 
-	return $is_frozen ? $class->now : $class->tick;
+	return $class->is_frozen ? $class->now : $class->tick;
 }
-
-1;
-
-__END__
-
-=head1 NAME
-
-Time::StasisField - use science fiction to control time within your tests
-
-=head1 SYNOPSIS
-
-		use Test::More;
-		use Time::StasisField (qw(now advance_time set_seconds_per_tick));
-
-		Time::StasisField::engage;
-
-		cmp_ok(
-		  time - CORE::time,
-		  '<=',
-		  1,
-		  "Perl's time() is within 1 second of CORE::time"
-		);
-
-		is( now, now, 'now is now' );
-
-=head1 DESCRIPTION
-
-something
 
 =head1 AUTHOR
 
 Aaron Cohen
+
+=cut
+
+1;

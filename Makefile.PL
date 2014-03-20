@@ -5,8 +5,8 @@ use ExtUtils::MakeMaker;
 use ExtUtils::MakeMaker::CPANfile;
 
 WriteMakefile(
-	NAME                => '__MODULE_NAME__',
+	NAME                => 'Time::StasisField',
 	AUTHOR              => q{Aaron Cohen <acohen@shutterstock.com>},
-	VERSION_FROM        => '__MODULE_RELATIVE_PATH__',
-	ABSTRACT            => '',
+	VERSION_FROM        => 'lib/Time/StasisField.pm',
+	ABSTRACT_FROM       => 'lib/Time/StasisField.pm',
 );
