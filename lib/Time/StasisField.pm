@@ -281,7 +281,6 @@ BEGIN {
 	}
 }
 
-
 sub alarm {
 	my $class = shift;
 	my $offset = @_ ? $_[0] : $_;
@@ -330,10 +329,61 @@ sub time {
 	return $class->is_frozen ? $class->now : $class->tick;
 }
 
+=head1 ACKNOWLEDGEMENTS
+
+This module was made possible by L<Shutterstock|http://www.shutterstock.com/>
+(L<@ShutterTech|https://twitter.com/ShutterTech>).  Additional open source
+projects from Shutterstock can be found at
+L<code.shutterstock.com|http://code.shutterstock.com/>.
+
 =head1 AUTHOR
 
-Aaron Cohen
+Aaron Cohen, C<< <aarondcohen at gmail.com> >>
+
+=head1 BUGS
+
+Please report any bugs or feature requests to C<bug-time-stasisfield at rt.cpan.org>, or through
+the web interface at L<https://github.com/aarondcohen/perl-time-stasisfield/issues>.  I will
+be notified, and then you'll automatically be notified of progress on your bug as I make changes.
+
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+	perldoc Time::StasisField
+
+You can also look for information at:
+
+=over 4
+
+=item * Official GitHub Repo
+
+L<https://github.com/aarondcohen/perl-time-stasisfield>
+
+=item * GitHub's Issue Tracker (report bugs here)
+
+L<https://github.com/aarondcohen/perl-time-stasisfield/issues>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/Time-StasisField>
+
+=item * Official CPAN Page
+
+L<http://search.cpan.org/dist/Time-StasisField/>
+
+=back
+
+=head1 LICENSE AND COPYRIGHT
+
+Copyright 2013 Aaron Cohen.
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of either: the GNU General Public License as published
+by the Free Software Foundation; or the Artistic License.
+
+See http://dev.perl.org/licenses/ for more information.
 
 =cut
 
-1;
+1; # End of Time::StasisField
