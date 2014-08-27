@@ -9,7 +9,7 @@ WriteMakefile(
 	AUTHOR              => q{Aaron Cohen <acohen@shutterstock.com>},
 	VERSION_FROM        => 'lib/Time/StasisField.pm',
 	ABSTRACT_FROM       => 'lib/Time/StasisField.pm',
-	# LICENSE             => 'gpl_2',
+	LICENSE             => 'perl',
 	META_MERGE => {
 		resources => {
 			homepage => 'http://github.com/aarondcohen/perl-time-stasisfield',
